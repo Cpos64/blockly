@@ -29,6 +29,7 @@ export async function addItem(input: {
   if (error) throw new Error(error.message);
 
   revalidatePath("/plan");
+  revalidatePath("/");
 }
 
 export async function updateItem(
@@ -56,6 +57,7 @@ export async function updateItem(
   if (error) throw new Error(error.message);
 
   revalidatePath("/plan");
+  revalidatePath("/");
 }
 
 export async function deleteItem(id: string) {
@@ -64,4 +66,5 @@ export async function deleteItem(id: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/plan");
+  revalidatePath("/");
 }

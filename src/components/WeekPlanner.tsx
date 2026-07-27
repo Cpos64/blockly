@@ -5,7 +5,7 @@ import type { Item } from "@/lib/types";
 import { updateItem } from "@/app/plan/actions";
 import { addDays, todayISO } from "@/lib/date-utils";
 import { START_HOUR, PX_PER_MIN } from "@/lib/grid-constants";
-import WeekGrid from "@/components/WeekGrid";
+import DaysGrid from "@/components/DaysGrid";
 import ItemDrawer, { type ItemDraft } from "@/components/ItemDrawer";
 
 export default function WeekPlanner({
@@ -36,7 +36,12 @@ export default function WeekPlanner({
     scrollRef.current.scrollTop = Math.max(top - 160, 0);
   }, [weekStart]);
 
-  function blankDraft(date: string, startTime: string, durationMinutes: number): ItemDraft {
+  function blankDraft(
+    date: string,
+    startTime: string,
+    durationMinutes: number,
+    origin?: { x: number; y: number },
+  ): ItemDraft {
     return {
       date,
       title: "",
@@ -44,10 +49,11 @@ export default function WeekPlanner({
       startTime,
       durationMinutes,
       completed: false,
+      origin,
     };
   }
 
-  function editDraft(item: Item): ItemDraft {
+  function editDraft(item: Item, origin?: { x: number; y: number }): ItemDraft {
     return {
       id: item.id,
       date: item.date,
@@ -57,6 +63,7 @@ export default function WeekPlanner({
       durationMinutes: item.duration_minutes,
       completed: item.completed,
       routineId: item.routine_id,
+      origin,
     };
   }
 
@@ -69,20 +76,57 @@ export default function WeekPlanner({
     });
   }
 
+  function toggleComplete(item: Item) {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id ? { ...i, completed: !i.completed } : i,
+      ),
+    );
+    startTransition(async () => {
+      await updateItem(item.id, { completed: !item.completed });
+    });
+  }
+
+  function resizeItem(
+    itemId: string,
+    changes: { startTime?: string; durationMinutes: number },
+  ) {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              start_time: changes.startTime ?? i.start_time,
+              duration_minutes: changes.durationMinutes,
+            }
+          : i,
+      ),
+    );
+    startTransition(async () => {
+      await updateItem(itemId, {
+        startTime: changes.startTime,
+        durationMinutes: changes.durationMinutes,
+      });
+    });
+  }
+
   return (
     <div className="flex flex-1 overflow-hidden">
       <section
         ref={scrollRef}
         className="flex-1 overflow-y-auto overflow-x-auto bg-white p-3 dark:bg-neutral-900"
       >
-        <WeekGrid
-          weekStart={weekStart}
+        <DaysGrid
+          dates={Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))}
           items={items}
           onDropItem={reschedule}
-          onCreateRange={(date, startTime, durationMinutes) =>
-            setDraft(blankDraft(date, startTime, durationMinutes))
+          onCreateRange={(date, startTime, durationMinutes, origin) =>
+            setDraft(blankDraft(date, startTime, durationMinutes, origin))
           }
-          onBlockClick={(item) => setDraft(editDraft(item))}
+          onBlockClick={(item, origin) => setDraft(editDraft(item, origin))}
+          onToggleComplete={toggleComplete}
+          onResizeItem={resizeItem}
+          compact
         />
       </section>
 

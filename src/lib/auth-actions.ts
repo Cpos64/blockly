@@ -22,7 +22,7 @@ export async function login(
   if (error) return { error: error.message };
 
   revalidatePath("/", "layout");
-  redirect("/plan");
+  redirect("/");
 }
 
 export async function signup(
@@ -53,7 +53,7 @@ export async function signup(
   }
 
   revalidatePath("/", "layout");
-  redirect("/plan");
+  redirect("/");
 }
 
 export async function logout() {

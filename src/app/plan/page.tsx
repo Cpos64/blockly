@@ -40,12 +40,17 @@ export default async function PlanPage({
     );
   }
 
-  await ensureRoutinesMaterialized(date);
+  const nextDate = addDays(date, 1);
+  await Promise.all([
+    ensureRoutinesMaterialized(date),
+    ensureRoutinesMaterialized(nextDate),
+  ]);
 
   const { data: items } = await supabase
     .from("items")
     .select("*")
-    .eq("date", date)
+    .gte("date", date)
+    .lte("date", nextDate)
     .order("start_time", { ascending: true, nullsFirst: true });
 
   return (

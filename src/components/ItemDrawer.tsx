@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type CSSProperties } from "react";
 import { addItem, updateItem, deleteItem } from "@/app/plan/actions";
 import { timeToMinutes, minutesToTime } from "@/lib/date-utils";
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120, 180, 240];
+const ANIM_MS = 260;
 
 function formatDuration(m: number): string {
   if (m < 60) return `${m} min`;
@@ -21,6 +22,7 @@ export type ItemDraft = {
   durationMinutes: number;
   completed: boolean;
   routineId?: string | null;
+  origin?: { x: number; y: number }; // viewport coords the drawer should animate from/to
 };
 
 export default function ItemDrawer({
@@ -38,8 +40,19 @@ export default function ItemDrawer({
   );
   const [duration, setDuration] = useState(draft.durationMinutes);
   const [pending, startTransition] = useTransition();
+  const [phase, setPhase] = useState<"enter" | "settled" | "exit">("enter");
 
   const isNew = !draft.id;
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setPhase("settled"));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  function requestClose() {
+    setPhase("exit");
+    setTimeout(onClose, ANIM_MS);
+  }
 
   function handleSave() {
     if (!title.trim()) return;
@@ -61,40 +74,61 @@ export default function ItemDrawer({
           durationMinutes: duration,
         });
       }
-      onClose();
     });
+    requestClose();
   }
 
   function handleDelete() {
     if (!draft.id) return;
     startTransition(async () => {
       await deleteItem(draft.id!);
-      onClose();
     });
+    requestClose();
   }
 
   function handleToggleComplete() {
     if (!draft.id) return;
     startTransition(async () => {
       await updateItem(draft.id!, { completed: !draft.completed });
-      onClose();
     });
+    requestClose();
   }
 
+  const origin = draft.origin;
+  const dx = origin && typeof window !== "undefined" ? origin.x - window.innerWidth / 2 : 0;
+  const dy = origin && typeof window !== "undefined" ? origin.y - window.innerHeight / 2 : 0;
+
+  const settled = phase === "settled";
+  const cardStyle: CSSProperties = {
+    transform: settled ? "translate(0, 0) scale(1)" : `translate(${dx}px, ${dy}px) scale(0.1)`,
+    opacity: settled ? 1 : 0,
+    transitionProperty: "transform, opacity",
+    transitionDuration: `${ANIM_MS}ms`,
+    transitionTimingFunction: settled
+      ? "cubic-bezier(0.34, 1.56, 0.64, 1)"
+      : "cubic-bezier(0.4, 0, 1, 1)",
+  };
+
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="Close"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/20"
+        onClick={requestClose}
+        style={{ transitionDuration: `${ANIM_MS}ms` }}
+        className={`absolute inset-0 bg-black/40 transition-opacity motion-reduce:transition-none ${
+          settled ? "opacity-100" : "opacity-0"
+        }`}
       />
-      <div className="relative z-10 flex h-full w-full max-w-sm flex-col gap-4 overflow-y-auto border-l border-neutral-200 bg-white p-5 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        style={cardStyle}
+        className="relative z-10 flex max-h-[85vh] w-full max-w-sm flex-col gap-4 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-5 shadow-2xl motion-reduce:transition-none dark:border-neutral-800 dark:bg-neutral-900"
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-50">
             {isNew ? "New task" : "Edit task"}
           </h2>
           <button
-            onClick={onClose}
+            onClick={requestClose}
             className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
             aria-label="Close"
           >

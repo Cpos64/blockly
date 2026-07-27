@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { addDays, formatDisplayDate, startOfWeek, formatShortDate, todayISO } from "@/lib/date-utils";
+import { addDays, startOfWeek, formatShortDate, todayISO } from "@/lib/date-utils";
 import LogoutButton from "@/components/LogoutButton";
+import NavTabs from "@/components/NavTabs";
 
 export default function DateNav({
   date,
@@ -18,13 +19,13 @@ export default function DateNav({
   const label =
     view === "week"
       ? `${formatShortDate(startOfWeek(date))} – ${formatShortDate(addDays(startOfWeek(date), 6))}`
-      : formatDisplayDate(date);
+      : `${formatShortDate(date)} – ${formatShortDate(addDays(date, 1))}`;
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800 sm:px-6">
       <div className="flex items-center gap-3">
         <Link
-          href="/plan"
+          href="/"
           className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-50"
         >
           Blockly
@@ -88,12 +89,7 @@ export default function DateNav({
 
         <span className="mx-1 h-5 w-px bg-neutral-200 dark:bg-neutral-800" />
 
-        <Link
-          href="/routines"
-          className="rounded-md px-2.5 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-900"
-        >
-          Routines
-        </Link>
+        <NavTabs active="calendar" />
         <LogoutButton />
       </div>
 

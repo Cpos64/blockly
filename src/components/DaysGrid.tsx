@@ -1,37 +1,53 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { Item } from "@/lib/types";
-import { addDays, todayISO } from "@/lib/date-utils";
+import { dayOfWeek, todayISO } from "@/lib/date-utils";
 import { START_HOUR, TOTAL_HEIGHT, PX_PER_MIN, hourLabel } from "@/lib/grid-constants";
 import DayColumn from "@/components/DayColumn";
 
 const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export default function WeekGrid({
-  weekStart,
+export default function DaysGrid({
+  dates,
   items,
   onDropItem,
   onCreateRange,
   onBlockClick,
+  onToggleComplete,
+  onResizeItem,
+  compact = false,
 }: {
-  weekStart: string;
-  items: Item[]; // scheduled items across the whole week
+  dates: string[]; // dates to render, one column each
+  items: Item[]; // scheduled items across all shown dates
   onDropItem: (itemId: string, date: string, startTime: string) => void;
-  onCreateRange: (date: string, startTime: string, durationMinutes: number) => void;
-  onBlockClick: (item: Item) => void;
+  onCreateRange: (
+    date: string,
+    startTime: string,
+    durationMinutes: number,
+    origin: { x: number; y: number },
+  ) => void;
+  onBlockClick: (item: Item, origin: { x: number; y: number }) => void;
+  onToggleComplete: (item: Item) => void;
+  onResizeItem: (
+    itemId: string,
+    changes: { startTime?: string; durationMinutes: number },
+  ) => void;
+  compact?: boolean;
 }) {
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const today = todayISO();
+  const gridTemplateColumns = `56px repeat(${dates.length}, 1fr)`;
 
   const hourMarks: number[] = [];
   for (let h = START_HOUR; h < 24; h++) hourMarks.push(h);
 
   return (
-    <div className="min-w-[820px]">
-      <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+    <div style={{ minWidth: compact ? 820 : 480 }}>
+      <div className="grid" style={{ gridTemplateColumns }}>
         <div />
-        {days.map((d, i) => {
+        {dates.map((d) => {
           const [, month, day] = d.split("-");
           const isToday = d === today;
           return (
@@ -43,7 +59,7 @@ export default function WeekGrid({
               }`}
             >
               <span className="text-[11px] uppercase tracking-wide text-neutral-400">
-                {WEEKDAY_ABBR[i]}
+                {WEEKDAY_ABBR[dayOfWeek(d)]}
               </span>
               <span
                 className={`text-sm font-semibold ${
@@ -60,7 +76,7 @@ export default function WeekGrid({
         })}
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+      <div className="grid" style={{ gridTemplateColumns }}>
         <div style={{ height: TOTAL_HEIGHT }} className="relative">
           {hourMarks.map((h) => (
             <div
@@ -73,7 +89,7 @@ export default function WeekGrid({
           ))}
         </div>
 
-        {days.map((d) => (
+        {dates.map((d) => (
           <DayColumn
             key={d}
             date={d}
@@ -81,7 +97,11 @@ export default function WeekGrid({
             onDropItem={onDropItem}
             onCreateRange={onCreateRange}
             onBlockClick={onBlockClick}
-            compact
+            onToggleComplete={onToggleComplete}
+            onResizeItem={onResizeItem}
+            selectedItemId={selectedItemId}
+            onSelectItem={setSelectedItemId}
+            compact={compact}
           />
         ))}
       </div>

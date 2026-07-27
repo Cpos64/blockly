@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Routine } from "@/lib/types";
 import RoutineManager from "@/components/RoutineManager";
 import LogoutButton from "@/components/LogoutButton";
+import NavTabs from "@/components/NavTabs";
 
 export default async function RoutinesPage() {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export default async function RoutinesPage() {
       <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800 sm:px-6">
         <div className="flex items-center gap-3">
           <Link
-            href="/plan"
+            href="/"
             className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-50"
           >
             Blockly
@@ -27,12 +28,7 @@ export default async function RoutinesPage() {
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <Link
-            href="/plan"
-            className="text-sm text-neutral-600 hover:underline dark:text-neutral-300"
-          >
-            Back to plan
-          </Link>
+          <NavTabs active="routines" />
           <LogoutButton />
         </div>
       </header>
