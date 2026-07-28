@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import type { Item } from "@/lib/types";
 import { addItem, updateItem, deleteItem } from "@/app/plan/actions";
 import { formatTime, formatDisplayDate } from "@/lib/date-utils";
@@ -57,6 +58,15 @@ export default function HomePlanner({
     });
   }
 
+  // Timed tasks sort soonest-first; untimed tasks keep their creation order
+  // and sit below the timed ones.
+  const sortedItems = [...items].sort((a, b) => {
+    if (a.start_time && b.start_time) return a.start_time.localeCompare(b.start_time);
+    if (a.start_time) return -1;
+    if (b.start_time) return 1;
+    return 0;
+  });
+
   function editDraft(item: Item, origin?: { x: number; y: number }): ItemDraft {
     return {
       id: item.id,
@@ -72,8 +82,8 @@ export default function HomePlanner({
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-neutral-50 dark:bg-neutral-950">
-      <header className="flex w-full max-w-2xl items-center justify-between px-6 pt-6">
+    <div className="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-950">
+      <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800 sm:px-6">
         <Link
           href="/"
           className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-50"
@@ -86,7 +96,7 @@ export default function HomePlanner({
         </div>
       </header>
 
-      <main className="flex w-full max-w-2xl flex-1 flex-col px-6 py-10 sm:py-16">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-10 sm:py-16">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-indigo-500">
           Today
         </p>
@@ -113,53 +123,60 @@ export default function HomePlanner({
               A blank page. Write down what today needs.
             </li>
           )}
-          {items.map((item) => (
-            <li
-              key={item.id}
-              className="group flex items-center gap-3 border-b border-dotted border-neutral-200 py-3 dark:border-neutral-800"
-            >
-              <button
-                type="button"
-                onClick={() => toggleComplete(item)}
-                aria-label={item.completed ? "Mark incomplete" : "Mark done"}
-                style={{
-                  borderColor: item.color,
-                  backgroundColor: item.completed ? item.color : "transparent",
-                }}
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition"
+          <AnimatePresence mode="popLayout" initial={false}>
+            {sortedItems.map((item) => (
+              <motion.li
+                key={item.id}
+                layout
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="group flex items-center gap-3 border-b border-dotted border-neutral-200 py-3 dark:border-neutral-800"
               >
-                {item.completed && (
-                  <span className="text-[10px] leading-none text-white">
-                    ✓
+                <button
+                  type="button"
+                  onClick={() => toggleComplete(item)}
+                  aria-label={item.completed ? "Mark incomplete" : "Mark done"}
+                  style={{
+                    borderColor: item.color,
+                    backgroundColor: item.completed ? item.color : "transparent",
+                  }}
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition"
+                >
+                  {item.completed && (
+                    <span className="text-[10px] leading-none text-white">
+                      ✓
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => setDraft(editDraft(item, { x: e.clientX, y: e.clientY }))}
+                  className={`flex-1 truncate text-left text-base text-neutral-800 dark:text-neutral-100 ${
+                    item.completed
+                      ? "text-neutral-400 line-through dark:text-neutral-600"
+                      : ""
+                  }`}
+                >
+                  {item.title}
+                </button>
+                {item.start_time && (
+                  <span className="shrink-0 text-xs text-neutral-400 dark:text-neutral-600">
+                    {formatTime(item.start_time)}
                   </span>
                 )}
-              </button>
-              <button
-                type="button"
-                onClick={(e) => setDraft(editDraft(item, { x: e.clientX, y: e.clientY }))}
-                className={`flex-1 truncate text-left text-base text-neutral-800 dark:text-neutral-100 ${
-                  item.completed
-                    ? "text-neutral-400 line-through dark:text-neutral-600"
-                    : ""
-                }`}
-              >
-                {item.title}
-              </button>
-              {item.start_time && (
-                <span className="shrink-0 text-xs text-neutral-400 dark:text-neutral-600">
-                  {formatTime(item.start_time)}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => remove(item)}
-                aria-label="Delete"
-                className="shrink-0 text-neutral-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100 dark:text-neutral-700"
-              >
-                ✕
-              </button>
-            </li>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => remove(item)}
+                  aria-label="Delete"
+                  className="shrink-0 text-neutral-300 opacity-0 transition hover:text-red-500 group-hover:opacity-100 dark:text-neutral-700"
+                >
+                  ✕
+                </button>
+              </motion.li>
+            ))}
+          </AnimatePresence>
         </ul>
 
         <Link

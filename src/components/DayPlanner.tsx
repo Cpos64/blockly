@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { Item } from "@/lib/types";
 import { updateItem } from "@/app/plan/actions";
 import { addDays, formatShortDate, formatTime, todayISO } from "@/lib/date-utils";
@@ -47,7 +48,9 @@ export default function DayPlanner({
     scrollRef.current.scrollTop = Math.max(top - 160, 0);
   }, [date, nextDate]);
 
-  const scheduled = items.filter((i) => i.start_time);
+  const scheduled = items
+    .filter((i) => i.start_time)
+    .sort((a, b) => `${a.date}T${a.start_time}`.localeCompare(`${b.date}T${b.start_time}`));
 
   function blankDraft(
     forDate: string,
@@ -160,54 +163,64 @@ export default function DayPlanner({
                     Nothing here. Add a task, or drag a block back to unschedule it.
                   </p>
                 )}
-                {backlog.map((item) => (
-                  <div
-                    key={item.id}
-                    draggable
-                    onDragStart={(e) =>
-                      e.dataTransfer.setData("text/plain", item.id)
-                    }
-                    style={{ borderColor: item.color }}
-                    className={`flex cursor-grab items-start gap-2 rounded-md border-l-4 bg-white px-3 py-2 text-sm shadow-sm transition active:cursor-grabbing dark:bg-neutral-900 ${
-                      item.completed ? "opacity-50" : ""
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleComplete(item)}
-                      aria-label={item.completed ? "Mark incomplete" : "Mark done"}
-                      style={{
-                        borderColor: item.color,
-                        backgroundColor: item.completed ? item.color : "transparent",
-                      }}
-                      className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
-                    >
-                      {item.completed && (
-                        <span className="text-[10px] leading-none text-white">
-                          ✓
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) =>
-                        setDraft(editDraft(item, { x: e.clientX, y: e.clientY }))
-                      }
-                      className="min-w-0 flex-1 text-left"
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {backlog.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
                     >
                       <div
-                        className={`truncate font-medium text-neutral-800 dark:text-neutral-100 ${
-                          item.completed ? "line-through" : ""
+                        draggable
+                        onDragStart={(e) =>
+                          e.dataTransfer.setData("text/plain", item.id)
+                        }
+                        style={{ borderColor: item.color }}
+                        className={`flex cursor-grab items-start gap-2 rounded-md border-l-4 bg-white px-3 py-2 text-sm shadow-sm transition active:cursor-grabbing dark:bg-neutral-900 ${
+                          item.completed ? "opacity-50" : ""
                         }`}
                       >
-                        {item.title}
+                        <button
+                          type="button"
+                          onClick={() => toggleComplete(item)}
+                          aria-label={item.completed ? "Mark incomplete" : "Mark done"}
+                          style={{
+                            borderColor: item.color,
+                            backgroundColor: item.completed ? item.color : "transparent",
+                          }}
+                          className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
+                        >
+                          {item.completed && (
+                            <span className="text-[10px] leading-none text-white">
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) =>
+                            setDraft(editDraft(item, { x: e.clientX, y: e.clientY }))
+                          }
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div
+                            className={`truncate font-medium text-neutral-800 dark:text-neutral-100 ${
+                              item.completed ? "line-through" : ""
+                            }`}
+                          >
+                            {item.title}
+                          </div>
+                          <div className="text-xs text-neutral-400">
+                            {item.duration_minutes} min
+                          </div>
+                        </button>
                       </div>
-                      <div className="text-xs text-neutral-400">
-                        {item.duration_minutes} min
-                      </div>
-                    </button>
-                  </div>
-                ))}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </div>
           );

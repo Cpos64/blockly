@@ -32,6 +32,27 @@ function useNowMinutes() {
   return minutes;
 }
 
+export type DraggingItemInfo = {
+  id: string;
+  durationMinutes: number;
+  color: string;
+  title: string;
+};
+
+function makeDragGhost(item: Item): HTMLDivElement {
+  const el = document.createElement("div");
+  el.textContent = `${item.title} · ${formatTime(item.start_time!)}`;
+  el.style.cssText = `
+    position: fixed; top: -1000px; left: -1000px;
+    padding: 4px 10px; border-radius: 6px; font: 500 12px sans-serif;
+    background: ${item.color}; color: #fff; opacity: 1;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+    max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  `;
+  document.body.appendChild(el);
+  return el;
+}
+
 export default function DayColumn({
   date,
   items,
@@ -42,6 +63,9 @@ export default function DayColumn({
   onResizeItem,
   selectedItemId,
   onSelectItem,
+  draggingItem,
+  onItemDragStart,
+  onItemDragEnd,
   compact = false,
 }: {
   date: string;
@@ -61,6 +85,9 @@ export default function DayColumn({
   ) => void;
   selectedItemId: string | null;
   onSelectItem: (itemId: string | null) => void;
+  draggingItem: DraggingItemInfo | null;
+  onItemDragStart: (info: DraggingItemInfo) => void;
+  onItemDragEnd: () => void;
   compact?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +101,7 @@ export default function DayColumn({
     startMin: number;
     durationMinutes: number;
   } | null>(null);
+  const [dropPreviewMin, setDropPreviewMin] = useState<number | null>(null);
 
   const isToday = date === todayISO();
   const nowMinutes = useNowMinutes();
@@ -170,17 +198,26 @@ export default function DayColumn({
       ref={containerRef}
       className="relative border-l border-neutral-200 dark:border-neutral-800"
       style={{ height: TOTAL_HEIGHT }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setDropPreviewMin(null);
+        }
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (draggingItem) setDropPreviewMin(yToMinutes(e.clientY));
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const itemId = e.dataTransfer.getData("text/plain");
+        setDropPreviewMin(null);
+        if (itemId) onDropItem(itemId, date, minutesToTime(yToMinutes(e.clientY)));
+      }}
     >
       {SLOTS.map((m) => (
         <div
           key={m}
           onMouseDown={() => handleSlotMouseDown(m)}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            const itemId = e.dataTransfer.getData("text/plain");
-            if (itemId) onDropItem(itemId, date, minutesToTime(m));
-          }}
           style={{ height: SLOT_MINUTES * PX_PER_MIN }}
           className={`cursor-pointer border-t hover:bg-indigo-50/60 dark:hover:bg-indigo-950/30 ${
             m % 60 === 0
@@ -202,7 +239,23 @@ export default function DayColumn({
             <div
               key={item.id}
               draggable
-              onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/plain", item.id);
+                e.dataTransfer.effectAllowed = "move";
+                const ghost = makeDragGhost(item);
+                e.dataTransfer.setDragImage(ghost, 12, 14);
+                setTimeout(() => document.body.removeChild(ghost), 0);
+                onItemDragStart({
+                  id: item.id,
+                  durationMinutes: item.duration_minutes,
+                  color: item.color,
+                  title: item.title,
+                });
+              }}
+              onDragEnd={() => {
+                onItemDragEnd();
+                setDropPreviewMin(null);
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectItem(isSelected ? null : item.id);
@@ -216,12 +269,12 @@ export default function DayColumn({
                 height,
                 left: 3,
                 right: 3,
-                backgroundColor: item.color + "22",
+                backgroundColor: item.color + "38",
                 borderColor: item.color,
               }}
               className={`pointer-events-auto absolute cursor-grab overflow-hidden rounded-md border-l-4 px-1.5 py-0.5 text-xs shadow-sm active:cursor-grabbing ${
                 item.completed ? "opacity-50" : ""
-              } ${isSelected ? "ring-2 ring-indigo-500 ring-offset-1 ring-offset-white dark:ring-offset-neutral-900" : ""}`}
+              } ${draggingItem?.id === item.id ? "opacity-30" : ""} ${isSelected ? "ring-2 ring-indigo-500 ring-offset-1 ring-offset-white dark:ring-offset-neutral-900" : ""}`}
             >
               <div className="flex items-center gap-1.5">
                 <button
@@ -290,6 +343,23 @@ export default function DayColumn({
           >
             {formatTime(minutesToTime(dragCreate.startMin))} ·{" "}
             {dragCreate.endMin - dragCreate.startMin}m
+          </div>
+        )}
+
+        {draggingItem && dropPreviewMin !== null && (
+          <div
+            style={{
+              top: (dropPreviewMin - START_HOUR * 60) * PX_PER_MIN,
+              height: Math.max(draggingItem.durationMinutes * PX_PER_MIN, 18),
+              left: 3,
+              right: 3,
+              borderColor: draggingItem.color,
+              backgroundColor: draggingItem.color + "33",
+            }}
+            className="absolute z-20 flex items-center rounded-md border-2 border-dashed px-1.5 py-0.5 text-xs font-semibold text-neutral-800 shadow-md dark:text-neutral-100"
+          >
+            {formatTime(minutesToTime(dropPreviewMin))} ·{" "}
+            {draggingItem.durationMinutes}m
           </div>
         )}
 

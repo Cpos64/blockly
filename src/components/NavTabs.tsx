@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 const TABS = [
   { key: "planner", label: "Planner", href: "/" },
@@ -17,13 +20,20 @@ export default function NavTabs({
         <Link
           key={tab.key}
           href={tab.href}
-          className={`rounded px-2.5 py-1 text-sm transition ${
+          className={`relative rounded px-2.5 py-1 text-sm transition ${
             active === tab.key
-              ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+              ? "text-white dark:text-neutral-900"
               : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
           }`}
         >
-          {tab.label}
+          {active === tab.key && (
+            <motion.span
+              layoutId="nav-tab-pill"
+              className="absolute inset-0 rounded bg-neutral-900 dark:bg-neutral-100"
+              transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+            />
+          )}
+          <span className="relative">{tab.label}</span>
         </Link>
       ))}
     </div>

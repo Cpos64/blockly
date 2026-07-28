@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Item } from "@/lib/types";
 import { dayOfWeek, todayISO } from "@/lib/date-utils";
 import { START_HOUR, TOTAL_HEIGHT, PX_PER_MIN, hourLabel } from "@/lib/grid-constants";
-import DayColumn from "@/components/DayColumn";
+import DayColumn, { type DraggingItemInfo } from "@/components/DayColumn";
 
 const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -37,6 +37,7 @@ export default function DaysGrid({
   compact?: boolean;
 }) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [draggingItem, setDraggingItem] = useState<DraggingItemInfo | null>(null);
   const today = todayISO();
   const gridTemplateColumns = `56px repeat(${dates.length}, 1fr)`;
 
@@ -101,6 +102,9 @@ export default function DaysGrid({
             onResizeItem={onResizeItem}
             selectedItemId={selectedItemId}
             onSelectItem={setSelectedItemId}
+            draggingItem={draggingItem}
+            onItemDragStart={setDraggingItem}
+            onItemDragEnd={() => setDraggingItem(null)}
             compact={compact}
           />
         ))}
